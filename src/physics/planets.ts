@@ -14,6 +14,19 @@ export interface InteriorLayer {
   description: string;
 }
 
+/** A moon shown orbiting its planet. */
+export interface MoonBody {
+  name: string;
+  radiusKm: number;
+  /** Orbit radius as a multiple of the planet's display radius. */
+  orbitFactor: number;
+  /** Sidereal orbital period, days. Negative means retrograde. */
+  periodDays: number;
+  color: number;
+  /** Optional texture file inside public/textures. */
+  texture?: string;
+}
+
 export interface Planet {
   id: string;
   name: string;
@@ -38,6 +51,7 @@ export interface Planet {
   moons: number;
   atmosphere: string;
   interior: InteriorLayer[];
+  moonList?: MoonBody[];
 }
 
 export const PLANETS: Planet[] = [
@@ -110,6 +124,9 @@ export const PLANETS: Planet[] = [
     gravity: 9.81,
     meanTempC: 15,
     moons: 1,
+    moonList: [
+      { name: "Moon", radiusKm: 1737, orbitFactor: 2.3, periodDays: 27.32, color: 0xbfbfbf, texture: "2k_moon.jpg" },
+    ],
     atmosphere: "Nitrogen and oxygen",
     interior: [
       { name: "Crust", inner: 0.985, outer: 1, color: 0x6b8f4e, description: "Thin rocky crust, 5 to 70 km." },
@@ -161,6 +178,12 @@ export const PLANETS: Planet[] = [
     gravity: 24.79,
     meanTempC: -110,
     moons: 95,
+    moonList: [
+      { name: "Io", radiusKm: 1821, orbitFactor: 1.5, periodDays: 1.769, color: 0xe8d98a },
+      { name: "Europa", radiusKm: 1561, orbitFactor: 1.9, periodDays: 3.551, color: 0xd8c8a0 },
+      { name: "Ganymede", radiusKm: 2634, orbitFactor: 2.3, periodDays: 7.155, color: 0xb0a090 },
+      { name: "Callisto", radiusKm: 2410, orbitFactor: 2.8, periodDays: 16.689, color: 0x8a8078 },
+    ],
     atmosphere: "Hydrogen and helium",
     interior: [
       { name: "Atmosphere", inner: 0.9, outer: 1, color: 0xe8d9b0, description: "Molecular hydrogen and helium bands." },
@@ -187,6 +210,9 @@ export const PLANETS: Planet[] = [
     gravity: 10.44,
     meanTempC: -140,
     moons: 146,
+    moonList: [
+      { name: "Titan", radiusKm: 2575, orbitFactor: 2.7, periodDays: 15.945, color: 0xe0b060 },
+    ],
     atmosphere: "Hydrogen and helium",
     interior: [
       { name: "Atmosphere", inner: 0.88, outer: 1, color: 0xe8dcae, description: "Hydrogen and helium, with ammonia haze." },
@@ -237,6 +263,9 @@ export const PLANETS: Planet[] = [
     gravity: 11.15,
     meanTempC: -200,
     moons: 16,
+    moonList: [
+      { name: "Triton", radiusKm: 1353, orbitFactor: 2.4, periodDays: -5.877, color: 0xc8d0d8 },
+    ],
     atmosphere: "Hydrogen, helium, methane",
     interior: [
       { name: "Atmosphere", inner: 0.82, outer: 1, color: 0x8ea8f0, description: "Hydrogen, helium and methane, with the fastest winds in the solar system." },

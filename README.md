@@ -36,6 +36,10 @@ http://localhost:5174. `bun test` runs the orbital mechanics tests.
 - **Look inside**: the "Look inside" button slices the planet open with a
   clipping plane and reveals its interior layers, labelled and to scale, each
   with real depth and composition. Try Earth and Jupiter.
+- **Moons and the asteroid belt**: Earth's Moon (textured) orbits Earth on its
+  real 27.3 day period, the four Galilean moons orbit Jupiter, Titan orbits
+  Saturn, and Triton orbits Neptune, all on their real periods. A field of
+  asteroids fills the belt between Mars and Jupiter.
 - **Time controls**: speed up, pause, or jump to today. The HUD shows the
   simulated date. A Whole system button frames all eight orbits.
 

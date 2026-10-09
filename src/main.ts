@@ -155,6 +155,77 @@ for (const planet of PLANETS) {
   records.set(planet.id, record);
 }
 
+// Moons: small bodies orbiting their planet. Added to the scene directly so
+// they are positioned relative to the planet each frame.
+interface MoonRecord {
+  planetId: string;
+  periodDays: number;
+  phase: number;
+  orbitScene: number;
+  mesh: THREE.Mesh;
+}
+const moonRecords: MoonRecord[] = [];
+for (const [id, record] of records) {
+  const list = record.planet.moonList;
+  if (!list) {
+    continue;
+  }
+  list.forEach((moon, index) => {
+    const moonRadius = Math.max(0.14, sceneRadiusFor(moon.radiusKm));
+    const material = moon.texture
+      ? new THREE.MeshStandardMaterial({
+          map: loadTexture(moon.texture),
+          roughness: 1,
+          metalness: 0,
+        })
+      : new THREE.MeshStandardMaterial({
+          color: moon.color,
+          roughness: 0.95,
+          metalness: 0,
+        });
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(moonRadius, 24, 18),
+      material,
+    );
+    scene.add(mesh);
+    moonRecords.push({
+      planetId: id,
+      periodDays: moon.periodDays,
+      phase: index * 1.9,
+      orbitScene: record.sceneRadius * moon.orbitFactor,
+      mesh,
+    });
+  });
+}
+
+// The main asteroid belt, between Mars and Jupiter.
+const beltCount = 2200;
+const beltPositions = new Float32Array(beltCount * 3);
+for (let i = 0; i < beltCount; i++) {
+  const rAu = 2.1 + Math.random() * 1.1;
+  const rc = DIST_SCALE * Math.sqrt(rAu);
+  const angle = Math.random() * Math.PI * 2;
+  beltPositions[i * 3] = rc * Math.cos(angle);
+  beltPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.7;
+  beltPositions[i * 3 + 2] = rc * Math.sin(angle);
+}
+const beltGeometry = new THREE.BufferGeometry();
+beltGeometry.setAttribute(
+  "position",
+  new THREE.BufferAttribute(beltPositions, 3),
+);
+const asteroidBelt = new THREE.Points(
+  beltGeometry,
+  new THREE.PointsMaterial({
+    color: 0x9a9082,
+    size: 0.12,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.85,
+  }),
+);
+scene.add(asteroidBelt);
+
 // Thin line through the poles, so the axial tilt and spin axis are visible.
 const axisLines = new Map<string, THREE.Line>();
 for (const [id, record] of records) {
@@ -454,6 +525,23 @@ function frame(): void {
     record.group.position.copy(toScene(p.x, p.y, p.z));
     spinPlanet(record, dayOffset);
   }
+
+  // Moons orbit their planet.
+  for (const moon of moonRecords) {
+    const record = records.get(moon.planetId);
+    if (!record) {
+      continue;
+    }
+    const angle = (dayOffset / moon.periodDays) * Math.PI * 2 + moon.phase;
+    moon.mesh.position.set(
+      record.group.position.x + Math.cos(angle) * moon.orbitScene,
+      record.group.position.y,
+      record.group.position.z + Math.sin(angle) * moon.orbitScene,
+    );
+  }
+
+  // The asteroid belt drifts around the Sun.
+  asteroidBelt.rotation.y = (dayOffset / (4.6 * 365.256)) * Math.PI * 2;
 
   // Live readouts for the focused planet: where it is and how fast.
   if (focusedId && focusedId !== "sun") {
