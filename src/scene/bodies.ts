@@ -107,6 +107,7 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
     map: loadTexture(planet.texture),
     roughness: 1,
     metalness: 0,
+    side: THREE.DoubleSide,
   });
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(sceneRadius, 64, 48),
@@ -140,11 +141,14 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
   const shells = new THREE.Group();
   for (const layer of [...planet.interior].sort((a, b) => a.outer - b.outer)) {
     const shell = new THREE.Mesh(
-      new THREE.SphereGeometry(layer.outer * sceneRadius, 40, 32),
+      new THREE.SphereGeometry(layer.outer * sceneRadius * 0.997, 40, 32),
       new THREE.MeshStandardMaterial({
         color: layer.color,
+        emissive: layer.color,
+        emissiveIntensity: 0.35,
         roughness: 0.9,
         metalness: 0,
+        side: THREE.DoubleSide,
       }),
     );
     shell.userData.layerName = layer.name;
