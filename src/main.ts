@@ -15,7 +15,13 @@ import {
   spinPlanet,
   type BodyRecord,
 } from "./scene/bodies";
-import { daysSinceJ2000, heliocentric } from "./physics/orbital";
+import {
+  daysSinceJ2000,
+  longitudeDeg,
+  orbitalPeriodDays,
+  positionAt,
+  velocityAt,
+} from "./physics/orbital";
 import "./style.css";
 
 const DIST_SCALE = 6.5;
@@ -137,9 +143,10 @@ for (const planet of PLANETS) {
   // Orbit line.
   const points: THREE.Vector3[] = [];
   const SAMPLES = 256;
+  const periodDays = orbitalPeriodDays(planet.elements.a);
   for (let i = 0; i < SAMPLES; i++) {
-    const day = (planet.elements.period * i) / SAMPLES;
-    const p = heliocentric(planet.elements, day);
+    const day = (periodDays * i) / SAMPLES;
+    const p = positionAt(planet.elements, day);
     points.push(toScene(p.x, p.y, p.z));
   }
   record.orbitLine.geometry.setFromPoints(points);
@@ -247,7 +254,8 @@ function factRow(label: string, value: string): string {
 
 function showFacts(facts: BodyFacts): void {
   const earthMasses = facts.massKg / MASS_EARTH;
-  const yearDays = PLANETS.find((p) => p.name === facts.name)?.elements.period;
+  const planet = PLANETS.find((p) => p.name === facts.name);
+  const yearDays = planet ? orbitalPeriodDays(planet.elements.a) : undefined;
   const layers = [...facts.interior]
     .sort((a, b) => b.outer - a.outer)
     .map(
@@ -272,6 +280,16 @@ function showFacts(facts: BodyFacts): void {
       ${factRow("Moons", `${facts.moons}`)}
       ${factRow("Atmosphere", facts.atmosphere)}
     </dl>
+    ${
+      planet
+        ? `<h3>Right now</h3>
+    <dl>
+      ${factRow("Distance from Sun", `<span id="dyn-dist">--</span>`)}
+      ${factRow("Orbital speed", `<span id="dyn-speed">--</span>`)}
+      ${factRow("Ecliptic longitude", `<span id="dyn-lon">--</span>`)}
+    </dl>`
+        : ""
+    }
     <h3>Inside</h3>
     <ul class="layers">${layers}</ul>
   `;
@@ -432,9 +450,29 @@ function frame(): void {
   sun.rotation.y += params.paused ? 0 : dt * 0.02;
 
   for (const record of records.values()) {
-    const p = heliocentric(record.planet.elements, dayOffset);
+    const p = positionAt(record.planet.elements, dayOffset);
     record.group.position.copy(toScene(p.x, p.y, p.z));
     spinPlanet(record, dayOffset);
+  }
+
+  // Live readouts for the focused planet: where it is and how fast.
+  if (focusedId && focusedId !== "sun") {
+    const record = records.get(focusedId);
+    const distEl = document.getElementById("dyn-dist");
+    if (record && distEl) {
+      const p = positionAt(record.planet.elements, dayOffset);
+      const v = velocityAt(record.planet.elements, dayOffset);
+      const lon = longitudeDeg(record.planet.elements, dayOffset);
+      distEl.textContent = `${p.r.toFixed(4)} AU (${(p.r * 149.6).toFixed(2)} million km)`;
+      const speedEl = document.getElementById("dyn-speed");
+      if (speedEl) {
+        speedEl.textContent = `${v.speedKmS.toFixed(3)} km/s`;
+      }
+      const lonEl = document.getElementById("dyn-lon");
+      if (lonEl) {
+        lonEl.textContent = `${lon.toFixed(2)}°`;
+      }
+    }
   }
 
   // Camera follows the focused body by translation, so dragging still orbits.

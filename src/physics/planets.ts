@@ -1,4 +1,4 @@
-import type { OrbitalElements } from "./orbital";
+import type { KeplerianElements } from "./orbital";
 
 /**
  * A layer of a planet's interior, as a shell between two radii expressed as a
@@ -21,7 +21,8 @@ export interface Planet {
   texture: string;
   /** Line and label colour, hex. */
   accent: number;
-  elements: OrbitalElements;
+  /** JPL approximate elements with century rates. */
+  elements: KeplerianElements;
   /** Mean radius, km. */
   radiusKm: number;
   /** Mass, kg. */
@@ -45,7 +46,12 @@ export const PLANETS: Planet[] = [
     name: "Mercury",
     texture: "2k_mercury.jpg",
     accent: 0x9c8f84,
-    elements: { a: 0.3871, e: 0.2056, i: 7.005, om: 48.331, w: 29.124, M0: 174.796, period: 87.969 },
+    elements: {
+      a: 0.38709927, e: 0.20563593, i: 7.00497902,
+      L: 252.2503235, longPeri: 77.45779628, longNode: 48.33076593,
+      aRate: 0.00000037, eRate: 0.00001906, iRate: -0.00594749,
+      LRate: 149472.67411175, longPeriRate: 0.16047689, longNodeRate: -0.12534081,
+    },
     radiusKm: 2439.7,
     massKg: 3.301e23,
     rotationHours: 1407.6,
@@ -65,7 +71,12 @@ export const PLANETS: Planet[] = [
     name: "Venus",
     texture: "2k_venus_atmosphere.jpg",
     accent: 0xe6c88a,
-    elements: { a: 0.7233, e: 0.0068, i: 3.395, om: 76.68, w: 54.884, M0: 50.115, period: 224.701 },
+    elements: {
+      a: 0.72333566, e: 0.00677672, i: 3.39467605,
+      L: 181.9790995, longPeri: 131.60246718, longNode: 76.67984255,
+      aRate: 0.0000039, eRate: -0.00004107, iRate: -0.0007889,
+      LRate: 58517.81538729, longPeriRate: 0.00268329, longNodeRate: -0.27769418,
+    },
     radiusKm: 6051.8,
     massKg: 4.867e24,
     rotationHours: -5832.5,
@@ -85,7 +96,13 @@ export const PLANETS: Planet[] = [
     name: "Earth",
     texture: "2k_earth_daymap.jpg",
     accent: 0x5aa9e6,
-    elements: { a: 1.0, e: 0.0167, i: 0.0, om: 0.0, w: 102.947, M0: 357.529, period: 365.256 },
+    // The Earth-Moon barycentre, as used by the JPL table.
+    elements: {
+      a: 1.00000261, e: 0.01671123, i: -0.00001531,
+      L: 100.46457166, longPeri: 102.93768193, longNode: 0.0,
+      aRate: 0.00000562, eRate: -0.00004392, iRate: -0.01294668,
+      LRate: 35999.37244981, longPeriRate: 0.32327364, longNodeRate: 0.0,
+    },
     radiusKm: 6371,
     massKg: 5.972e24,
     rotationHours: 23.934,
@@ -106,7 +123,12 @@ export const PLANETS: Planet[] = [
     name: "Mars",
     texture: "2k_mars.jpg",
     accent: 0xd1603d,
-    elements: { a: 1.5237, e: 0.0934, i: 1.85, om: 49.558, w: 286.502, M0: 19.373, period: 686.98 },
+    elements: {
+      a: 1.52371034, e: 0.0933941, i: 1.84969142,
+      L: -4.55343205, longPeri: -23.94362959, longNode: 49.55953891,
+      aRate: 0.00001847, eRate: 0.00007882, iRate: -0.00813131,
+      LRate: 19140.30268499, longPeriRate: 0.44441088, longNodeRate: -0.29257343,
+    },
     radiusKm: 3389.5,
     massKg: 6.417e23,
     rotationHours: 24.623,
@@ -126,7 +148,12 @@ export const PLANETS: Planet[] = [
     name: "Jupiter",
     texture: "2k_jupiter.jpg",
     accent: 0xd8b48a,
-    elements: { a: 5.2029, e: 0.0484, i: 1.304, om: 100.464, w: 273.867, M0: 20.02, period: 4332.59 },
+    elements: {
+      a: 5.202887, e: 0.04838624, i: 1.30439695,
+      L: 34.39644051, longPeri: 14.72847983, longNode: 100.47390909,
+      aRate: -0.00011607, eRate: -0.00013253, iRate: -0.00183714,
+      LRate: 3034.74612775, longPeriRate: 0.21252668, longNodeRate: 0.20469106,
+    },
     radiusKm: 69911,
     massKg: 1.898e27,
     rotationHours: 9.925,
@@ -147,7 +174,12 @@ export const PLANETS: Planet[] = [
     name: "Saturn",
     texture: "2k_saturn.jpg",
     accent: 0xe6d5a0,
-    elements: { a: 9.5367, e: 0.0539, i: 2.486, om: 113.665, w: 339.392, M0: 317.02, period: 10759.22 },
+    elements: {
+      a: 9.53667594, e: 0.05386179, i: 2.48599187,
+      L: 49.95424423, longPeri: 92.59887831, longNode: 113.66242448,
+      aRate: -0.0012506, eRate: -0.00050991, iRate: 0.00193609,
+      LRate: 1222.49362201, longPeriRate: -0.41897216, longNodeRate: -0.28867794,
+    },
     radiusKm: 58232,
     massKg: 5.683e26,
     rotationHours: 10.656,
@@ -167,7 +199,12 @@ export const PLANETS: Planet[] = [
     name: "Uranus",
     texture: "2k_uranus.jpg",
     accent: 0x8fd8e6,
-    elements: { a: 19.1892, e: 0.0473, i: 0.773, om: 74.006, w: 96.999, M0: 142.238, period: 30688.5 },
+    elements: {
+      a: 19.18916464, e: 0.04725744, i: 0.77263783,
+      L: 313.23810451, longPeri: 170.9542763, longNode: 74.01692503,
+      aRate: -0.00196176, eRate: -0.00004397, iRate: -0.00242939,
+      LRate: 428.48202785, longPeriRate: 0.40805281, longNodeRate: 0.04240589,
+    },
     radiusKm: 25362,
     massKg: 8.681e25,
     rotationHours: -17.24,
@@ -187,7 +224,12 @@ export const PLANETS: Planet[] = [
     name: "Neptune",
     texture: "2k_neptune.jpg",
     accent: 0x4c6fe0,
-    elements: { a: 30.0699, e: 0.0086, i: 1.77, om: 131.784, w: 276.336, M0: 256.228, period: 60182 },
+    elements: {
+      a: 30.06992276, e: 0.00859048, i: 1.77004347,
+      L: -55.12002969, longPeri: 44.96476227, longNode: 131.78422574,
+      aRate: 0.00026291, eRate: 0.00005105, iRate: 0.00035372,
+      LRate: 218.45945325, longPeriRate: -0.32241464, longNodeRate: -0.00508664,
+    },
     radiusKm: 24622,
     massKg: 1.024e26,
     rotationHours: 16.11,

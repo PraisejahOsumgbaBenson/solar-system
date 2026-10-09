@@ -1,27 +1,39 @@
 /**
- * Keplerian orbital mechanics. Pure functions, SI-free: distances in AU,
- * angles in degrees in the interface and radians internally, time in days
- * since J2000 (2000-01-01 12:00 TT).
+ * Heliocentric planetary positions from the JPL "approximate positions of the
+ * major planets" model (E. M. Standish), the 1800 to 2050 table. Each planet
+ * has six orbital elements at J2000 plus their rates of change per Julian
+ * century, which is what makes the positions accurate for the current date and
+ * not just at the epoch.
  *
- * Elements are mean ecliptic J2000 values; positions track the real solar
- * system to good accuracy for the years around J2000.
+ * Source: JPL Solar System Dynamics, ssd.jpl.nasa.gov/planets/approx_pos.html.
+ * Accuracy is a few arcminutes over 1800 to 2050, which is far more than a
+ * visualisation needs.
+ *
+ * Distances are AU, angles degrees in the interface and radians internally,
+ * time is days since J2000 (2000-01-01 12:00 TT).
  */
 
-export interface OrbitalElements {
+export interface KeplerianElements {
   /** Semi-major axis, AU. */
   a: number;
   /** Eccentricity. */
   e: number;
   /** Inclination to the ecliptic, degrees. */
   i: number;
+  /** Mean longitude, degrees. */
+  L: number;
+  /** Longitude of perihelion, degrees. */
+  longPeri: number;
   /** Longitude of the ascending node, degrees. */
-  om: number;
-  /** Argument of perihelion, degrees. */
-  w: number;
-  /** Mean anomaly at J2000, degrees. */
-  M0: number;
-  /** Orbital period, days. */
-  period: number;
+  longNode: number;
+  /** Rate of a, AU per century. */
+  aRate: number;
+  eRate: number;
+  iRate: number;
+  /** Rate of L, degrees per century. */
+  LRate: number;
+  longPeriRate: number;
+  longNodeRate: number;
 }
 
 export interface HeliocentricPosition {
@@ -36,17 +48,11 @@ export interface HeliocentricPosition {
 }
 
 const DEG = Math.PI / 180;
+const JULIAN_CENTURY_DAYS = 36525;
+const AU_KM = 1.495978707e8;
+const SECONDS_PER_DAY = 86400;
 
-/** Mean anomaly in radians at `days` after J2000. */
-export function meanAnomaly(elements: OrbitalElements, days: number): number {
-  const deg = elements.M0 + (360 * days) / elements.period;
-  return deg * DEG;
-}
-
-/**
- * Solve Kepler's equation `E - e sin E = M` for the eccentric anomaly E, via
- * Newton's method. Converges in a handful of iterations for e < 1.
- */
+/** Solve Kepler's equation `E - e sin E = M` for E, via Newton's method. */
 export function solveKepler(meanAnomalyRad: number, e: number): number {
   let E = meanAnomalyRad;
   for (let k = 0; k < 12; k++) {
@@ -60,33 +66,78 @@ export function solveKepler(meanAnomalyRad: number, e: number): number {
   return E;
 }
 
+/** Orbital period in days, from the semi-major axis (Kepler's third law). */
+export function orbitalPeriodDays(a: number): number {
+  return 365.256898 * Math.pow(a, 1.5);
+}
+
 /** Heliocentric ecliptic position (AU) at `days` after J2000. */
-export function heliocentric(
-  elements: OrbitalElements,
+export function positionAt(
+  elements: KeplerianElements,
   days: number,
 ): HeliocentricPosition {
-  const M = meanAnomaly(elements, days);
-  const E = solveKepler(M, elements.e);
+  const T = days / JULIAN_CENTURY_DAYS;
 
-  // Position in the orbital plane.
-  const xv = elements.a * (Math.cos(E) - elements.e);
-  const yv = elements.a * Math.sqrt(1 - elements.e * elements.e) * Math.sin(E);
-  const r = Math.hypot(xv, yv);
-  const v = Math.atan2(yv, xv);
+  const a = elements.a + elements.aRate * T;
+  const e = elements.e + elements.eRate * T;
+  const inc = (elements.i + elements.iRate * T) * DEG;
+  const L = elements.L + elements.LRate * T;
+  const longPeri = elements.longPeri + elements.longPeriRate * T;
+  const longNode = elements.longNode + elements.longNodeRate * T;
 
-  // Rotate by argument of perihelion, inclination, then node.
-  const w = elements.w * DEG;
-  const inc = elements.i * DEG;
-  const om = elements.om * DEG;
-  const u = v + w;
+  const argPeri = (longPeri - longNode) * DEG;
+  const M = (L - longPeri) * DEG;
+
+  const E = solveKepler(M, e);
+
+  // Position in the orbital plane, x' toward perihelion.
+  const xp = a * (Math.cos(E) - e);
+  const yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+
+  const cosw = Math.cos(argPeri);
+  const sinw = Math.sin(argPeri);
+  const cosO = Math.cos(longNode * DEG);
+  const sinO = Math.sin(longNode * DEG);
+  const cosi = Math.cos(inc);
+  const sini = Math.sin(inc);
 
   const x =
-    r * (Math.cos(om) * Math.cos(u) - Math.sin(om) * Math.sin(u) * Math.cos(inc));
+    (cosw * cosO - sinw * sinO * cosi) * xp +
+    (-sinw * cosO - cosw * sinO * cosi) * yp;
   const y =
-    r * (Math.sin(om) * Math.cos(u) + Math.cos(om) * Math.sin(u) * Math.cos(inc));
-  const z = r * (Math.sin(u) * Math.sin(inc));
+    (cosw * sinO + sinw * cosO * cosi) * xp +
+    (-sinw * sinO + cosw * cosO * cosi) * yp;
+  const z = sinw * sini * xp + cosw * sini * yp;
 
-  return { x, y, z, r };
+  return { x, y, z, r: Math.hypot(x, y, z) };
+}
+
+/**
+ * Heliocentric velocity at `days` after J2000, in AU per day, by central
+ * difference. Also returns the speed in km/s.
+ */
+export function velocityAt(
+  elements: KeplerianElements,
+  days: number,
+): { vx: number; vy: number; vz: number; speedKmS: number } {
+  const dt = 0.01;
+  const before = positionAt(elements, days - dt);
+  const after = positionAt(elements, days + dt);
+  const vx = (after.x - before.x) / (2 * dt);
+  const vy = (after.y - before.y) / (2 * dt);
+  const vz = (after.z - before.z) / (2 * dt);
+  const speedAuPerDay = Math.hypot(vx, vy, vz);
+  const speedKmS = (speedAuPerDay * AU_KM) / SECONDS_PER_DAY;
+  return { vx, vy, vz, speedKmS };
+}
+
+/** Ecliptic longitude, degrees, at `days` after J2000. */
+export function longitudeDeg(
+  elements: KeplerianElements,
+  days: number,
+): number {
+  const p = positionAt(elements, days);
+  return ((Math.atan2(p.y, p.x) * 180) / Math.PI + 360) % 360;
 }
 
 /** Days since J2000 for a JavaScript date. */
