@@ -19,7 +19,7 @@ import { daysSinceJ2000, heliocentric } from "./physics/orbital";
 import "./style.css";
 
 const DIST_SCALE = 5;
-const SIZE_SCALE = 0.8;
+const SIZE_SCALE = 0.9;
 const SUN_SCENE_RADIUS = 1.7;
 const EARTH_RADIUS_KM = 6371;
 
@@ -35,7 +35,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x02030a, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.0;
 renderer.localClippingEnabled = true;
 app.appendChild(renderer.domElement);
 
@@ -62,17 +62,19 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.7,
-  0.7,
+  0.45,
   0.6,
+  0.9,
 );
 composer.addPass(bloom);
 
 // ---- Lighting and the Sun ---------------------------------------------------
 
-const sunLight = new THREE.PointLight(0xfff4e0, 9000, 0, 2);
+// A light without distance falloff keeps every planet lit the same way, so the
+// inner planets are not blown out white while the outer ones go dark.
+const sunLight = new THREE.PointLight(0xfff4e0, 3.4, 0, 0);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x2a3a55, 0.7));
+scene.add(new THREE.AmbientLight(0x233046, 0.3));
 
 const sun = createSun(SUN_SCENE_RADIUS);
 scene.add(sun);
@@ -86,7 +88,7 @@ const halo = new THREE.Sprite(
     depthWrite: false,
   }),
 );
-halo.scale.setScalar(SUN_SCENE_RADIUS * 2.3);
+halo.scale.setScalar(SUN_SCENE_RADIUS * 3.2);
 scene.add(halo);
 
 scene.add(createStarfield());
