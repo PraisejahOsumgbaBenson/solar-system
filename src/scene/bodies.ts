@@ -5,7 +5,7 @@ import type { Planet } from "../physics/planets";
 export const textureLoader = new THREE.TextureLoader();
 
 export function loadTexture(file: string): THREE.Texture {
-  const texture = textureLoader.load(`/textures/${file}`);
+  const texture = textureLoader.load(`${import.meta.env.BASE_URL}textures/${file}`);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 8;
   return texture;
