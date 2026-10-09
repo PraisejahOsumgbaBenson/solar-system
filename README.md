@@ -5,6 +5,20 @@ orbit the Sun on their real orbital paths, spin at their real rates, and are
 tilted at their real axial tilts. Click any planet to fly to it, read a fact
 sheet, and look inside with a 3D cutaway.
 
+## Screenshots
+
+The system, with the Sun, orbit lines, and the asteroid belt:
+
+![The solar system](docs/preview.png)
+
+Earth, with its Moon, clouds, and night-side city lights:
+
+![Earth](docs/earth.png)
+
+Look inside: a clipped 3D cross-section of Earth's interior layers:
+
+![Earth interior](docs/interior.png)
+
 ## Run it
 
 ```sh
