@@ -18,8 +18,8 @@ import {
 import { daysSinceJ2000, heliocentric } from "./physics/orbital";
 import "./style.css";
 
-const DIST_SCALE = 5;
-const SIZE_SCALE = 0.9;
+const DIST_SCALE = 6.5;
+const SIZE_SCALE = 0.95;
 const SUN_SCENE_RADIUS = 1.7;
 const EARTH_RADIUS_KM = 6371;
 
@@ -35,7 +35,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x02030a, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.1;
 renderer.localClippingEnabled = true;
 app.appendChild(renderer.domElement);
 
@@ -50,7 +50,7 @@ const camera = new THREE.PerspectiveCamera(
   0.05,
   20000,
 );
-camera.position.set(0, 22, 14);
+camera.position.set(0, 16, 12);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -72,9 +72,9 @@ composer.addPass(bloom);
 
 // A light without distance falloff keeps every planet lit the same way, so the
 // inner planets are not blown out white while the outer ones go dark.
-const sunLight = new THREE.PointLight(0xfff4e0, 3.4, 0, 0);
+const sunLight = new THREE.PointLight(0xfff4e0, 7.5, 0, 0);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x233046, 0.3));
+scene.add(new THREE.AmbientLight(0x2a3a55, 0.55));
 
 const sun = createSun(SUN_SCENE_RADIUS);
 scene.add(sun);
@@ -105,7 +105,9 @@ function toScene(x: number, y: number, z: number): THREE.Vector3 {
 }
 
 function sceneRadiusFor(radiusKm: number): number {
-  return SIZE_SCALE * Math.sqrt(radiusKm / EARTH_RADIUS_KM);
+  // Compress large bodies more than small ones (exponent below 1/2) so gas
+  // giants do not swallow the space between orbits.
+  return SIZE_SCALE * Math.pow(radiusKm / EARTH_RADIUS_KM, 0.38);
 }
 
 // ---- Planets ----------------------------------------------------------------
@@ -339,7 +341,7 @@ const params = {
   paused: false,
 };
 
-let dayOffset = 0;
+let dayOffset = daysSinceJ2000(new Date());
 
 const gui = new GUI({ title: "Time" });
 gui.add(params, "daysPerSecond", 0, 60, 0.5).name("days per second");

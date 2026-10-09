@@ -120,8 +120,8 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
   if (planet.id === "saturn") {
     const ringTexture = loadTexture("2k_saturn_ring_alpha.png");
     const ringGeometry = new THREE.RingGeometry(
-      sceneRadius * 1.35,
-      sceneRadius * 2.4,
+      sceneRadius * 1.16,
+      sceneRadius * 1.55,
       128,
     );
     const ring = new THREE.Mesh(
