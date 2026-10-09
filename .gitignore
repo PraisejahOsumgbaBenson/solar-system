@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Downloaded textures (fetched with `bun run fetch-textures`)
+public/textures/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+
+# Local env
+.env
+.env.local
+
+# Local verification artifacts
+.playwright-mcp/
