@@ -16,6 +16,7 @@ const TEXTURES: Array<{ file: string; body: string }> = [
   { file: "2k_venus_surface.jpg", body: "Venus" },
   { file: "2k_venus_atmosphere.jpg", body: "Venus (atmosphere)" },
   { file: "2k_earth_daymap.jpg", body: "Earth" },
+  { file: "2k_earth_nightmap.jpg", body: "Earth (city lights)" },
   { file: "2k_earth_clouds.jpg", body: "Earth (clouds)" },
   { file: "2k_moon.jpg", body: "Moon" },
   { file: "2k_mars.jpg", body: "Mars" },

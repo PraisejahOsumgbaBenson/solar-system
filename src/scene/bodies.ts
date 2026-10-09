@@ -116,6 +116,82 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
   mesh.userData.planetId = planet.id;
   axis.add(mesh);
 
+  if (planet.id === "earth") {
+    // City lights on the night side: an emissive map gated by the angle to the
+    // Sun, so the lights fade in at the terminator instead of glowing in
+    // daylight.
+    surfaceMaterial.emissive = new THREE.Color(0xffffff);
+    surfaceMaterial.emissiveMap = loadTexture("2k_earth_nightmap.jpg");
+    surfaceMaterial.emissiveIntensity = 1;
+    surfaceMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.uSunDirView = { value: new THREE.Vector3(1, 0, 0) };
+      shader.uniforms.uNightGain = { value: 1 };
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          "#include <common>\nuniform vec3 uSunDirView;\nuniform float uNightGain;",
+        )
+        .replace(
+          "#include <emissivemap_fragment>",
+          "#include <emissivemap_fragment>\n  float nightF = smoothstep(0.15, -0.05, dot(normalize(vNormal), uSunDirView));\n  totalEmissiveRadiance *= nightF * uNightGain;",
+        );
+      surfaceMaterial.userData.shader = shader;
+    };
+
+    // Cloud shell, lit like the surface, drifting slowly.
+    const clouds = new THREE.Mesh(
+      new THREE.SphereGeometry(sceneRadius * 1.015, 48, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        alphaMap: loadTexture("2k_earth_clouds.jpg"),
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+        roughness: 1,
+        metalness: 0,
+      }),
+    );
+    clouds.name = "clouds";
+    axis.add(clouds);
+
+    // A soft blue atmosphere rim at the limb.
+    const atmosphere = new THREE.Mesh(
+      new THREE.SphereGeometry(sceneRadius * 1.08, 48, 32),
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color(0x5aa9ff) },
+          uStrength: { value: 0.9 },
+        },
+        vertexShader: `
+          varying vec3 vNormalW;
+          varying vec3 vViewDirW;
+          void main() {
+            vNormalW = normalize(mat3(modelMatrix) * normal);
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vViewDirW = normalize(cameraPosition - wp.xyz);
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uStrength;
+          varying vec3 vNormalW;
+          varying vec3 vViewDirW;
+          void main() {
+            float f = pow(1.0 - abs(dot(normalize(vNormalW), normalize(vViewDirW))), 2.5);
+            gl_FragColor = vec4(uColor * f * uStrength, f * 0.9);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        depthWrite: false,
+      }),
+    );
+    atmosphere.name = "atmosphere";
+    axis.add(atmosphere);
+  }
+
   // Saturn's rings, in the planet's equatorial plane.
   if (planet.id === "saturn") {
     const ringTexture = loadTexture("2k_saturn_ring_alpha.png");

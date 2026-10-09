@@ -83,8 +83,9 @@ const sunLight = new THREE.PointLight(0xfff4e0, 6.5, 0, 0);
 scene.add(sunLight);
 // Fill light from every direction so the night side of a planet is still
 // readable, not pitch black.
-scene.add(new THREE.AmbientLight(0x3a4a66, 0.9));
-scene.add(new THREE.HemisphereLight(0x8899cc, 0x0a0a12, 0.6));
+const ambientLight = new THREE.AmbientLight(0x3a4a66, 0.9);
+const hemiLight = new THREE.HemisphereLight(0x8899cc, 0x0a0a12, 0.6);
+scene.add(ambientLight, hemiLight);
 
 const sun = createSun(SUN_SCENE_RADIUS);
 scene.add(sun);
@@ -359,6 +360,11 @@ function setInterior(on: boolean): void {
   for (const record of records.values()) {
     const active = on && record.planet.id === focusedId;
     record.shells.visible = active;
+    for (const child of record.axis.children) {
+      if (child.name === "clouds" || child.name === "atmosphere") {
+        child.visible = !active;
+      }
+    }
     for (const mat of materialsOf(record)) {
       mat.clippingPlanes = active ? [clipPlane] : [];
       mat.needsUpdate = true;
@@ -497,6 +503,15 @@ moonsButton.addEventListener("click", () => {
   moonsButton.textContent = params.showMoons ? "Moons: on" : "Moons: off";
 });
 bar.appendChild(moonsButton);
+
+const nightButton = document.createElement("button");
+nightButton.textContent = "Night: off";
+nightButton.addEventListener("click", () => {
+  params.night = !params.night;
+  nightButton.textContent = params.night ? "Night: on" : "Night: off";
+  applyNight();
+});
+bar.appendChild(nightButton);
 addButton("sun", "Sun");
 for (const p of PLANETS) {
   addButton(p.id, p.name);
@@ -541,6 +556,7 @@ const params = {
   showBelt: true,
   showStars: true,
   showOrbits: true,
+  night: false,
 };
 
 let dayOffset = daysSinceJ2000(new Date());
@@ -563,6 +579,7 @@ speedFolder.add({ month: () => setSpeed(30) }, "month").name("1 month / second")
 
 gui.add(params, "paused").name("pause");
 gui.add(params, "showAxis").name("rotation axis");
+gui.add(params, "night").name("night mode").onChange(applyNight);
 
 const showFolder = gui.addFolder("Show");
 showFolder.add(params, "showMoons").name("moons");
@@ -579,6 +596,43 @@ gui.add(
   "today",
 ).name("jump to today");
 gui.add({ whole: viewWholeSystem }, "whole").name("whole system view");
+
+const earthRecord = records.get("earth");
+const earthSunWorld = new THREE.Vector3();
+const earthSunView = new THREE.Vector3();
+
+/** Dim the scene and brighten the stars for the night mood. */
+function applyNight(): void {
+  sunLight.intensity = params.night ? 3.6 : 6.5;
+  ambientLight.intensity = params.night ? 0.3 : 0.9;
+  hemiLight.intensity = params.night ? 0.22 : 0.6;
+  const starMaterial = starfield.material as THREE.PointsMaterial;
+  starMaterial.size = params.night ? 4.5 : 3;
+  starMaterial.opacity = params.night ? 1 : 0.9;
+}
+
+/** Point Earth's city lights away from the Sun, so they light the night side. */
+function updateEarthNight(): void {
+  if (!earthRecord) {
+    return;
+  }
+  const material = earthRecord.mesh.material as THREE.MeshStandardMaterial;
+  const shader = material.userData.shader as
+    | {
+        uniforms: {
+          uSunDirView: { value: THREE.Vector3 };
+          uNightGain: { value: number };
+        };
+      }
+    | undefined;
+  if (!shader) {
+    return;
+  }
+  earthSunWorld.copy(earthRecord.group.position).negate().normalize();
+  earthSunView.copy(earthSunWorld).transformDirection(camera.matrixWorldInverse);
+  shader.uniforms.uSunDirView.value.copy(earthSunView);
+  shader.uniforms.uNightGain.value = params.night ? 1.7 : 1.0;
+}
 
 const hudDate = document.getElementById("hud-date");
 const hudSpeed = document.getElementById("hud-speed");
@@ -711,6 +765,14 @@ function frame(): void {
     moon.label.style.display = v.z < 1 ? "block" : "none";
     moon.label.style.left = `${((v.x + 1) / 2) * window.innerWidth}px`;
     moon.label.style.top = `${((1 - v.y) / 2) * window.innerHeight}px`;
+  }
+
+  updateEarthNight();
+  if (earthRecord && !params.paused) {
+    const clouds = earthRecord.axis.getObjectByName("clouds");
+    if (clouds) {
+      clouds.rotation.y += dt * 0.01;
+    }
   }
 
   composer.render();
