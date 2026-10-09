@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar system · explore the planets and look inside</title>
+    <meta
+      name="description"
+      content="An interactive, realistic simulation of the solar system. Click a planet to fly to it, read the facts, and see a 3D cutaway of its interior."
+    />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="labels"></div>
+
+    <div id="hud">
+      <h1>SOLAR SYSTEM</h1>
+      <dl>
+        <dt>Date</dt>
+        <dd id="hud-date">--</dd>
+        <dt>Speed</dt>
+        <dd id="hud-speed">--</dd>
+      </dl>
+      <p class="hint">Click a planet to fly to it. Drag to orbit, scroll to zoom.</p>
+    </div>
+
+    <aside id="info" class="hidden">
+      <button id="info-close" aria-label="Close">&times;</button>
+      <div id="info-body"></div>
+    </aside>
+
+    <div id="planets"></div>
+
+    <p id="credit">
+      Textures: Solar System Scope (CC BY 4.0). Orbits and physical data after NASA/JPL.
+    </p>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

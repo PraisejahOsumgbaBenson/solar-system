@@ -1,0 +1,25 @@
+{
+  "name": "solar-system",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An interactive, realistic simulation of the solar system with clickable planets and 3D interior cutaways.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "fetch-textures": "bun run scripts/fetch-textures.ts"
+  },
+  "dependencies": {
+    "three": "^0.169.0",
+    "lil-gui": "^0.19.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "@types/three": "^0.169.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
