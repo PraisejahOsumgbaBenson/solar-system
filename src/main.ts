@@ -25,8 +25,9 @@ import {
 } from "./physics/orbital";
 import "./style.css";
 
-const DIST_SCALE = 6.5;
-const SIZE_SCALE = 0.95;
+const DIST_SCALE = 7.5;
+const DIST_POWER = 0.55;
+const SIZE_SCALE = 0.5;
 const SUN_SCENE_RADIUS = 1.7;
 const EARTH_RADIUS_KM = 6371;
 
@@ -110,7 +111,7 @@ scene.add(starfield);
 /** Map a heliocentric ecliptic position (AU) to scene coordinates. */
 function toScene(x: number, y: number, z: number): THREE.Vector3 {
   const r = Math.hypot(x, y, z) || 1e-9;
-  const rc = DIST_SCALE * Math.sqrt(r);
+  const rc = DIST_SCALE * Math.pow(r, DIST_POWER);
   const k = rc / r;
   // Ecliptic z becomes scene up (y); ecliptic y becomes scene z.
   return new THREE.Vector3(x * k, z * k, y * k);
@@ -253,7 +254,7 @@ const beltCount = 2200;
 const beltPositions = new Float32Array(beltCount * 3);
 for (let i = 0; i < beltCount; i++) {
   const rAu = 2.1 + Math.random() * 1.1;
-  const rc = DIST_SCALE * Math.sqrt(rAu);
+  const rc = DIST_SCALE * Math.pow(rAu, DIST_POWER);
   const angle = Math.random() * Math.PI * 2;
   beltPositions[i * 3] = rc * Math.cos(angle);
   beltPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.7;
@@ -361,7 +362,7 @@ function setInterior(on: boolean): void {
     const active = on && record.planet.id === focusedId;
     record.shells.visible = active;
     for (const child of record.axis.children) {
-      if (child.name === "clouds" || child.name === "atmosphere") {
+      if (child.name === "clouds") {
         child.visible = !active;
       }
     }
@@ -478,7 +479,7 @@ function viewWholeSystem(): void {
   setInterior(false);
   infoPanel.classList.add("hidden");
   controls.target.set(0, 0, 0);
-  camera.position.set(0, 52, 66);
+  camera.position.set(0, 72, 92);
   controls.update();
 }
 

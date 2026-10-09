@@ -153,43 +153,6 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
     );
     clouds.name = "clouds";
     axis.add(clouds);
-
-    // A soft blue atmosphere rim at the limb.
-    const atmosphere = new THREE.Mesh(
-      new THREE.SphereGeometry(sceneRadius * 1.08, 48, 32),
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uColor: { value: new THREE.Color(0x5aa9ff) },
-          uStrength: { value: 0.9 },
-        },
-        vertexShader: `
-          varying vec3 vNormalW;
-          varying vec3 vViewDirW;
-          void main() {
-            vNormalW = normalize(mat3(modelMatrix) * normal);
-            vec4 wp = modelMatrix * vec4(position, 1.0);
-            vViewDirW = normalize(cameraPosition - wp.xyz);
-            gl_Position = projectionMatrix * viewMatrix * wp;
-          }
-        `,
-        fragmentShader: `
-          uniform vec3 uColor;
-          uniform float uStrength;
-          varying vec3 vNormalW;
-          varying vec3 vViewDirW;
-          void main() {
-            float f = pow(1.0 - abs(dot(normalize(vNormalW), normalize(vViewDirW))), 2.5);
-            gl_FragColor = vec4(uColor * f * uStrength, f * 0.9);
-          }
-        `,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide,
-        depthWrite: false,
-      }),
-    );
-    atmosphere.name = "atmosphere";
-    axis.add(atmosphere);
   }
 
   // Saturn's rings, in the planet's equatorial plane.
