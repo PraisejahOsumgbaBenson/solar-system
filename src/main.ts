@@ -72,9 +72,12 @@ composer.addPass(bloom);
 
 // A light without distance falloff keeps every planet lit the same way, so the
 // inner planets are not blown out white while the outer ones go dark.
-const sunLight = new THREE.PointLight(0xfff4e0, 7.5, 0, 0);
+const sunLight = new THREE.PointLight(0xfff4e0, 6.5, 0, 0);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x2a3a55, 0.55));
+// Fill light from every direction so the night side of a planet is still
+// readable, not pitch black.
+scene.add(new THREE.AmbientLight(0x3a4a66, 0.9));
+scene.add(new THREE.HemisphereLight(0x8899cc, 0x0a0a12, 0.6));
 
 const sun = createSun(SUN_SCENE_RADIUS);
 scene.add(sun);
@@ -145,6 +148,22 @@ for (const planet of PLANETS) {
   records.set(planet.id, record);
 }
 
+// Thin line through the poles, so the axial tilt and spin axis are visible.
+const axisLines = new Map<string, THREE.Line>();
+for (const [id, record] of records) {
+  const geometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -1.4 * record.sceneRadius, 0),
+    new THREE.Vector3(0, 1.4 * record.sceneRadius, 0),
+  ]);
+  const line = new THREE.Line(
+    geometry,
+    new THREE.LineBasicMaterial({ color: 0x8fd0ff, transparent: true, opacity: 0.85 }),
+  );
+  line.visible = false;
+  record.axis.add(line);
+  axisLines.set(id, line);
+}
+
 // ---- Labels -----------------------------------------------------------------
 
 const labelsContainer = document.getElementById("labels")!;
@@ -179,8 +198,10 @@ const SUN_FACTS: BodyFacts = {
 
 let focusedId: string | null = null;
 let interiorOn = false;
-let followTarget: THREE.Vector3 | null = null;
-let followOffset = new THREE.Vector3();
+let followId: string | null = null;
+const lastFollowPos = new THREE.Vector3();
+const followPos = new THREE.Vector3();
+const deltaVec = new THREE.Vector3();
 
 const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
@@ -189,7 +210,7 @@ const infoBody = document.getElementById("info-body")!;
 document.getElementById("info-close")?.addEventListener("click", () => {
   setInterior(false);
   focusedId = null;
-  followTarget = null;
+  followId = null;
   infoPanel.classList.add("hidden");
 });
 
@@ -262,33 +283,59 @@ function showFacts(facts: BodyFacts): void {
 }
 
 function focusOn(id: string | null): void {
+  setInterior(false);
+
   if (id === null) {
     focusedId = null;
-    followTarget = null;
-    setInterior(false);
+    followId = null;
     infoPanel.classList.add("hidden");
     return;
   }
 
   focusedId = id;
-  setInterior(false);
+  followId = id;
 
   if (id === "sun") {
-    followTarget = new THREE.Vector3(0, 0, 0);
-    const dir = camera.position.clone().sub(followTarget).normalize();
-    followOffset = dir.multiplyScalar(SUN_SCENE_RADIUS * 7);
+    followPos.set(0, 0, 0);
+    frameBody(followPos, SUN_SCENE_RADIUS);
     showFacts(SUN_FACTS);
   } else {
     const record = records.get(id);
     if (!record) {
       return;
     }
-    followTarget = record.group.position.clone();
-    const dir = camera.position.clone().sub(followTarget).normalize();
-    followOffset = dir.multiplyScalar(record.sceneRadius * 7 + 0.6);
+    followPos.copy(record.group.position);
+    frameBody(followPos, record.sceneRadius);
     showFacts(record.planet);
   }
   infoPanel.classList.remove("hidden");
+}
+
+// Snap the camera to a comfortable distance from a body, keeping the current
+// viewing direction. The camera then follows the body by translation, so the
+// user can still drag to orbit it at any time.
+function frameBody(position: THREE.Vector3, radius: number): void {
+  const dir = camera.position.clone().sub(position);
+  if (dir.lengthSq() < 1e-6) {
+    dir.set(0, 0.4, 1);
+  }
+  dir.normalize();
+  const distance = radius * 6 + 0.6;
+  camera.position.copy(position).addScaledVector(dir, distance);
+  controls.target.copy(position);
+  controls.update();
+  lastFollowPos.copy(position);
+}
+
+// A wide view that frames the whole system, out past Neptune's orbit.
+function viewWholeSystem(): void {
+  focusedId = null;
+  followId = null;
+  setInterior(false);
+  infoPanel.classList.add("hidden");
+  controls.target.set(0, 0, 0);
+  camera.position.set(0, 52, 66);
+  controls.update();
 }
 
 // ---- Planet selector bar ----------------------------------------------------
@@ -300,6 +347,10 @@ function addButton(id: string, name: string): void {
   btn.addEventListener("click", () => focusOn(id));
   bar.appendChild(btn);
 }
+const wholeButton = document.createElement("button");
+wholeButton.textContent = "Whole system";
+wholeButton.addEventListener("click", viewWholeSystem);
+bar.appendChild(wholeButton);
 addButton("sun", "Sun");
 for (const p of PLANETS) {
   addButton(p.id, p.name);
@@ -337,8 +388,9 @@ renderer.domElement.addEventListener("pointerup", (e) => {
 // ---- Time -------------------------------------------------------------------
 
 const params = {
-  daysPerSecond: 4,
+  daysPerSecond: 2,
   paused: false,
+  showAxis: true,
 };
 
 let dayOffset = daysSinceJ2000(new Date());
@@ -346,6 +398,7 @@ let dayOffset = daysSinceJ2000(new Date());
 const gui = new GUI({ title: "Time" });
 gui.add(params, "daysPerSecond", 0, 60, 0.5).name("days per second");
 gui.add(params, "paused").name("pause");
+gui.add(params, "showAxis").name("rotation axis");
 gui.add(
   {
     today: () => {
@@ -354,6 +407,7 @@ gui.add(
   },
   "today",
 ).name("jump to today");
+gui.add({ whole: viewWholeSystem }, "whole").name("whole system view");
 
 const hudDate = document.getElementById("hud-date");
 const hudSpeed = document.getElementById("hud-speed");
@@ -383,25 +437,34 @@ function frame(): void {
     spinPlanet(record, dayOffset);
   }
 
-  // Camera follows the focused body.
-  if (followTarget) {
-    if (focusedId && focusedId !== "sun") {
-      const r = records.get(focusedId);
+  // Camera follows the focused body by translation, so dragging still orbits.
+  if (followId) {
+    if (followId === "sun") {
+      followPos.set(0, 0, 0);
+    } else {
+      const r = records.get(followId);
       if (r) {
-        followTarget.copy(r.group.position);
+        followPos.copy(r.group.position);
       }
     }
-    controls.target.lerp(followTarget, 0.12);
-    const desired = tmp.copy(followTarget).add(followOffset);
-    camera.position.lerp(desired, 0.08);
+    deltaVec.copy(followPos).sub(lastFollowPos);
+    camera.position.add(deltaVec);
+    controls.target.add(deltaVec);
+    lastFollowPos.copy(followPos);
+  }
 
-    if (interiorOn && focusedId && focusedId !== "sun") {
-      const r = records.get(focusedId);
-      if (r) {
-        const normal = tmp.copy(r.group.position).sub(camera.position).normalize();
-        clipPlane.normal.copy(normal);
-        clipPlane.constant = -normal.dot(r.group.position);
-      }
+  // Show the rotation axis line for the focused body.
+  for (const [id, line] of axisLines) {
+    line.visible = params.showAxis && id === focusedId;
+  }
+
+  // The interior cutaway plane passes through the focused planet's centre.
+  if (interiorOn && focusedId && focusedId !== "sun") {
+    const r = records.get(focusedId);
+    if (r) {
+      const normal = tmp.copy(r.group.position).sub(camera.position).normalize();
+      clipPlane.normal.copy(normal);
+      clipPlane.constant = -normal.dot(r.group.position);
     }
   }
 
