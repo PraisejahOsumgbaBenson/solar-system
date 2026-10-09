@@ -94,6 +94,12 @@ body {
   white-space: nowrap;
 }
 
+.moon-label {
+  color: #aeb8d8;
+  font-size: 0.6rem;
+  opacity: 0.9;
+}
+
 /* Info panel */
 #info {
   position: fixed;

@@ -5,7 +5,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import GUI from "lil-gui";
 import { PLANETS } from "./physics/planets";
-import type { InteriorLayer } from "./physics/planets";
+import type { InteriorLayer, MoonBody } from "./physics/planets";
 import {
   createGlowTexture,
   createPlanet,
@@ -19,6 +19,7 @@ import {
   daysSinceJ2000,
   longitudeDeg,
   orbitalPeriodDays,
+  orbitalPosition,
   positionAt,
   velocityAt,
 } from "./physics/orbital";
@@ -100,7 +101,8 @@ const halo = new THREE.Sprite(
 halo.scale.setScalar(SUN_SCENE_RADIUS * 3.2);
 scene.add(halo);
 
-scene.add(createStarfield());
+const starfield = createStarfield();
+scene.add(starfield);
 
 // ---- Helpers ----------------------------------------------------------------
 
@@ -117,6 +119,43 @@ function sceneRadiusFor(radiusKm: number): number {
   // Compress large bodies more than small ones (exponent below 1/2) so gas
   // giants do not swallow the space between orbits.
   return SIZE_SCALE * Math.pow(radiusKm / EARTH_RADIUS_KM, 0.38);
+}
+
+const DEG = Math.PI / 180;
+const moonScratch = new THREE.Vector3();
+
+/**
+ * Offset of a moon from its planet, in scene units. Moons with real elements
+ * follow the eccentric, inclined orbit (so they speed up near perigee); the
+ * rest use a uniform circle at their real period.
+ */
+function moonOffsetScene(
+  moon: MoonBody,
+  orbitScene: number,
+  days: number,
+  phase: number,
+): THREE.Vector3 {
+  if (moon.elements) {
+    const el = moon.elements;
+    const M = (el.M0Deg + (360 * days) / moon.periodDays) * DEG;
+    const p = orbitalPosition(
+      el.aKm,
+      el.e,
+      el.iDeg * DEG,
+      el.nodeDeg * DEG,
+      (el.periDeg - el.nodeDeg) * DEG,
+      M,
+    );
+    const scale = orbitScene / el.aKm;
+    // Ecliptic (x, y, z) maps to scene (x, z, y).
+    return moonScratch.set(p.x * scale, p.z * scale, p.y * scale);
+  }
+  const angle = (days / moon.periodDays) * Math.PI * 2 + phase;
+  return moonScratch.set(
+    Math.cos(angle) * orbitScene,
+    0,
+    Math.sin(angle) * orbitScene,
+  );
 }
 
 // ---- Planets ----------------------------------------------------------------
@@ -159,12 +198,14 @@ for (const planet of PLANETS) {
 // they are positioned relative to the planet each frame.
 interface MoonRecord {
   planetId: string;
-  periodDays: number;
+  moon: MoonBody;
   phase: number;
   orbitScene: number;
   mesh: THREE.Mesh;
+  label: HTMLDivElement;
 }
 const moonRecords: MoonRecord[] = [];
+const moonLabelsContainer = document.getElementById("labels")!;
 for (const [id, record] of records) {
   const list = record.planet.moonList;
   if (!list) {
@@ -188,12 +229,20 @@ for (const [id, record] of records) {
       material,
     );
     scene.add(mesh);
+
+    const label = document.createElement("div");
+    label.className = "label moon-label";
+    label.textContent = moon.name;
+    label.style.display = "none";
+    moonLabelsContainer.appendChild(label);
+
     moonRecords.push({
       planetId: id,
-      periodDays: moon.periodDays,
+      moon,
       phase: index * 1.9,
       orbitScene: record.sceneRadius * moon.orbitFactor,
       mesh,
+      label,
     });
   });
 }
@@ -440,6 +489,14 @@ const wholeButton = document.createElement("button");
 wholeButton.textContent = "Whole system";
 wholeButton.addEventListener("click", viewWholeSystem);
 bar.appendChild(wholeButton);
+
+const moonsButton = document.createElement("button");
+moonsButton.textContent = "Moons: on";
+moonsButton.addEventListener("click", () => {
+  params.showMoons = !params.showMoons;
+  moonsButton.textContent = params.showMoons ? "Moons: on" : "Moons: off";
+});
+bar.appendChild(moonsButton);
 addButton("sun", "Sun");
 for (const p of PLANETS) {
   addButton(p.id, p.name);
@@ -477,17 +534,42 @@ renderer.domElement.addEventListener("pointerup", (e) => {
 // ---- Time -------------------------------------------------------------------
 
 const params = {
-  daysPerSecond: 2,
+  daysPerSecond: 0.5,
   paused: false,
   showAxis: true,
+  showMoons: true,
+  showBelt: true,
+  showStars: true,
+  showOrbits: true,
 };
 
 let dayOffset = daysSinceJ2000(new Date());
 
 const gui = new GUI({ title: "Time" });
-gui.add(params, "daysPerSecond", 0, 60, 0.5).name("days per second");
+const speedController = gui
+  .add(params, "daysPerSecond", 0, 30, 0.01)
+  .name("days per second");
+function setSpeed(value: number): void {
+  params.daysPerSecond = value;
+  speedController.updateDisplay();
+}
+
+const speedFolder = gui.addFolder("Speed presets");
+speedFolder.add({ real: () => setSpeed(1 / 86400) }, "real").name("real time (1s = 1s)");
+speedFolder.add({ hour: () => setSpeed(1 / 24) }, "hour").name("1 hour / second");
+speedFolder.add({ day: () => setSpeed(1) }, "day").name("1 day / second");
+speedFolder.add({ week: () => setSpeed(7) }, "week").name("1 week / second");
+speedFolder.add({ month: () => setSpeed(30) }, "month").name("1 month / second");
+
 gui.add(params, "paused").name("pause");
 gui.add(params, "showAxis").name("rotation axis");
+
+const showFolder = gui.addFolder("Show");
+showFolder.add(params, "showMoons").name("moons");
+showFolder.add(params, "showBelt").name("asteroid belt");
+showFolder.add(params, "showStars").name("stars");
+showFolder.add(params, "showOrbits").name("orbit lines");
+
 gui.add(
   {
     today: () => {
@@ -526,18 +608,27 @@ function frame(): void {
     spinPlanet(record, dayOffset);
   }
 
-  // Moons orbit their planet.
+  // Moons orbit their planet, on accurate paths where elements are known.
   for (const moon of moonRecords) {
+    moon.mesh.visible = params.showMoons;
     const record = records.get(moon.planetId);
-    if (!record) {
+    if (!record || !params.showMoons) {
       continue;
     }
-    const angle = (dayOffset / moon.periodDays) * Math.PI * 2 + moon.phase;
-    moon.mesh.position.set(
-      record.group.position.x + Math.cos(angle) * moon.orbitScene,
-      record.group.position.y,
-      record.group.position.z + Math.sin(angle) * moon.orbitScene,
+    const offset = moonOffsetScene(
+      moon.moon,
+      moon.orbitScene,
+      dayOffset,
+      moon.phase,
     );
+    moon.mesh.position.copy(record.group.position).add(offset);
+  }
+
+  // Visibility toggles.
+  starfield.visible = params.showStars;
+  asteroidBelt.visible = params.showBelt;
+  for (const record of records.values()) {
+    record.orbitLine.visible = params.showOrbits;
   }
 
   // The asteroid belt drifts around the Sun.
@@ -607,6 +698,19 @@ function frame(): void {
     el.style.display = visible ? "block" : "none";
     el.style.left = `${((v.x + 1) / 2) * window.innerWidth}px`;
     el.style.top = `${((1 - v.y) / 2) * window.innerHeight}px`;
+  }
+
+  // Moon labels, shown only for the focused planet's system.
+  for (const moon of moonRecords) {
+    const show = params.showMoons && moon.planetId === focusedId;
+    if (!show) {
+      moon.label.style.display = "none";
+      continue;
+    }
+    const v = tmp.copy(moon.mesh.position).project(camera);
+    moon.label.style.display = v.z < 1 ? "block" : "none";
+    moon.label.style.left = `${((v.x + 1) / 2) * window.innerWidth}px`;
+    moon.label.style.top = `${((1 - v.y) / 2) * window.innerHeight}px`;
   }
 
   composer.render();

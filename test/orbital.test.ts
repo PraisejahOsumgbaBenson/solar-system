@@ -3,6 +3,7 @@ import {
   daysSinceJ2000,
   longitudeDeg,
   orbitalPeriodDays,
+  orbitalPosition,
   positionAt,
   solveKepler,
   velocityAt,
@@ -100,6 +101,43 @@ describe("the model advances with the date", () => {
     const start = longitudeDeg(EARTH, daysSinceJ2000(new Date(Date.UTC(2026, 0, 1))));
     const later = longitudeDeg(EARTH, daysSinceJ2000(new Date(Date.UTC(2026, 6, 1))));
     expect(later).not.toBeCloseTo(start, 1);
+  });
+});
+
+describe("the Moon", () => {
+  const moon = planetById("earth")!.moonList![0];
+  const elements = moon.elements!;
+
+  function radiusAt(days: number): number {
+    const M = (elements.M0Deg + (360 * days) / moon.periodDays) * (Math.PI / 180);
+    const p = orbitalPosition(
+      elements.aKm,
+      elements.e,
+      elements.iDeg * (Math.PI / 180),
+      elements.nodeDeg * (Math.PI / 180),
+      (elements.periDeg - elements.nodeDeg) * (Math.PI / 180),
+      M,
+    );
+    return Math.hypot(p.x, p.y, p.z);
+  }
+
+  test("has a real perigee near 363,000 km and apogee near 405,000 km", () => {
+    let min = Infinity;
+    let max = 0;
+    for (let d = 0; d < moon.periodDays; d += 0.1) {
+      const r = radiusAt(d);
+      min = Math.min(min, r);
+      max = Math.max(max, r);
+    }
+    expect(min).toBeGreaterThan(360000);
+    expect(min).toBeLessThan(366000);
+    expect(max).toBeGreaterThan(403000);
+    expect(max).toBeLessThan(407000);
+  });
+
+  test("completes its orbit in about 27.3 days", () => {
+    expect(moon.periodDays).toBeGreaterThan(27.2);
+    expect(moon.periodDays).toBeLessThan(27.4);
   });
 });
 

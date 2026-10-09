@@ -25,6 +25,22 @@ export interface MoonBody {
   color: number;
   /** Optional texture file inside public/textures. */
   texture?: string;
+  /**
+   * Optional accurate orbital elements (geocentric). When present the moon's
+   * direction and distance follow the real eccentric, inclined orbit instead
+   * of a plain circle.
+   */
+  elements?: {
+    aKm: number;
+    e: number;
+    iDeg: number;
+    /** Longitude of the ascending node, degrees. */
+    nodeDeg: number;
+    /** Longitude of perigee, degrees. */
+    periDeg: number;
+    /** Mean anomaly at J2000, degrees. */
+    M0Deg: number;
+  };
 }
 
 export interface Planet {
@@ -125,7 +141,22 @@ export const PLANETS: Planet[] = [
     meanTempC: 15,
     moons: 1,
     moonList: [
-      { name: "Moon", radiusKm: 1737, orbitFactor: 2.3, periodDays: 27.32, color: 0xbfbfbf, texture: "2k_moon.jpg" },
+      {
+        name: "Moon",
+        radiusKm: 1737,
+        orbitFactor: 2.3,
+        periodDays: 27.321661,
+        color: 0xbfbfbf,
+        texture: "2k_moon.jpg",
+        elements: {
+          aKm: 384400,
+          e: 0.0549,
+          iDeg: 5.145,
+          nodeDeg: 125.08,
+          periDeg: 83.35,
+          M0Deg: 134.97,
+        },
+      },
     ],
     atmosphere: "Nitrogen and oxygen",
     interior: [

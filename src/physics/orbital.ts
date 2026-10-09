@@ -71,6 +71,41 @@ export function orbitalPeriodDays(a: number): number {
   return 365.256898 * Math.pow(a, 1.5);
 }
 
+/**
+ * Position in the plane of an orbit, rotated into the reference frame.
+ * Angles in radians: inclination, ascending node, argument of perihelion, and
+ * the mean anomaly. Returns coordinates in the same length unit as `a`.
+ */
+export function orbitalPosition(
+  a: number,
+  e: number,
+  inc: number,
+  node: number,
+  argPeri: number,
+  meanAnomalyRad: number,
+): { x: number; y: number; z: number } {
+  const E = solveKepler(meanAnomalyRad, e);
+  const xp = a * (Math.cos(E) - e);
+  const yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
+
+  const cosw = Math.cos(argPeri);
+  const sinw = Math.sin(argPeri);
+  const cosO = Math.cos(node);
+  const sinO = Math.sin(node);
+  const cosi = Math.cos(inc);
+  const sini = Math.sin(inc);
+
+  return {
+    x:
+      (cosw * cosO - sinw * sinO * cosi) * xp +
+      (-sinw * cosO - cosw * sinO * cosi) * yp,
+    y:
+      (cosw * sinO + sinw * cosO * cosi) * xp +
+      (-sinw * sinO + cosw * cosO * cosi) * yp,
+    z: sinw * sini * xp + cosw * sini * yp,
+  };
+}
+
 /** Heliocentric ecliptic position (AU) at `days` after J2000. */
 export function positionAt(
   elements: KeplerianElements,
@@ -88,28 +123,8 @@ export function positionAt(
   const argPeri = (longPeri - longNode) * DEG;
   const M = (L - longPeri) * DEG;
 
-  const E = solveKepler(M, e);
-
-  // Position in the orbital plane, x' toward perihelion.
-  const xp = a * (Math.cos(E) - e);
-  const yp = a * Math.sqrt(1 - e * e) * Math.sin(E);
-
-  const cosw = Math.cos(argPeri);
-  const sinw = Math.sin(argPeri);
-  const cosO = Math.cos(longNode * DEG);
-  const sinO = Math.sin(longNode * DEG);
-  const cosi = Math.cos(inc);
-  const sini = Math.sin(inc);
-
-  const x =
-    (cosw * cosO - sinw * sinO * cosi) * xp +
-    (-sinw * cosO - cosw * sinO * cosi) * yp;
-  const y =
-    (cosw * sinO + sinw * cosO * cosi) * xp +
-    (-sinw * sinO + cosw * cosO * cosi) * yp;
-  const z = sinw * sini * xp + cosw * sini * yp;
-
-  return { x, y, z, r: Math.hypot(x, y, z) };
+  const p = orbitalPosition(a, e, inc, longNode * DEG, argPeri, M);
+  return { x: p.x, y: p.y, z: p.z, r: Math.hypot(p.x, p.y, p.z) };
 }
 
 /**
