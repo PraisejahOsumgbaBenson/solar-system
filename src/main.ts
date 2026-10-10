@@ -598,6 +598,12 @@ gui.add(
 ).name("jump to today");
 gui.add({ whole: viewWholeSystem }, "whole").name("whole system view");
 
+// On small screens collapse the control panel to its title bar so it does not
+// fight the HUD for the top of the viewport; tap the bar to reopen it.
+if (window.innerWidth <= 680) {
+  gui.close();
+}
+
 const earthRecord = records.get("earth");
 const earthSunWorld = new THREE.Vector3();
 const earthSunView = new THREE.Vector3();
