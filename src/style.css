@@ -354,4 +354,28 @@ body {
   body {
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Floating button to exit interior/cutaway view on mobile */
+  #interior-exit {
+    position: fixed;
+    top: 0.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    appearance: none;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--panel);
+    backdrop-filter: blur(8px);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.72rem;
+    cursor: pointer;
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  #interior-exit:active {
+    opacity: 0.8;
+  }
 }

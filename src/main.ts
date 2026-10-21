@@ -341,7 +341,37 @@ document.getElementById("info-close")?.addEventListener("click", () => {
   focusedId = null;
   followId = null;
   infoPanel.classList.add("hidden");
+  hideInteriorExitButton();
 });
+
+// Floating button to exit interior view on mobile
+const interiorExitBtn = document.createElement("button");
+interiorExitBtn.id = "interior-exit";
+interiorExitBtn.textContent = "Hide core";
+interiorExitBtn.style.display = "none";
+document.body.appendChild(interiorExitBtn);
+
+interiorExitBtn.addEventListener("click", () => {
+  setInterior(false);
+  if (focusedId && focusedId !== "sun") {
+    const record = records.get(focusedId);
+    if (record) {
+      showFacts(record.planet);
+    }
+  } else if (focusedId === "sun") {
+    showFacts(SUN_FACTS);
+  }
+  infoPanel.classList.remove("hidden");
+  hideInteriorExitButton();
+});
+
+function showInteriorExitButton(): void {
+  interiorExitBtn.style.display = "block";
+}
+
+function hideInteriorExitButton(): void {
+  interiorExitBtn.style.display = "none";
+}
 
 function materialsOf(record: BodyRecord): THREE.Material[] {
   const mats: THREE.Material[] = [record.mesh.material as THREE.Material];
@@ -422,13 +452,22 @@ function showFacts(facts: BodyFacts): void {
   `;
 
   document.getElementById("interior-toggle")?.addEventListener("click", () => {
-    setInterior(!interiorOn);
+    const turningOn = !interiorOn;
+    setInterior(turningOn);
+    if (turningOn && window.innerWidth <= 680) {
+      infoPanel.classList.add("hidden");
+      showInteriorExitButton();
+    } else {
+      hideInteriorExitButton();
+      infoPanel.classList.remove("hidden");
+    }
     showFacts(facts);
   });
 }
 
 function focusOn(id: string | null): void {
   setInterior(false);
+  hideInteriorExitButton();
 
   if (id === null) {
     focusedId = null;
@@ -477,6 +516,7 @@ function viewWholeSystem(): void {
   focusedId = null;
   followId = null;
   setInterior(false);
+  hideInteriorExitButton();
   infoPanel.classList.add("hidden");
   controls.target.set(0, 0, 0);
   camera.position.set(0, 72, 92);
@@ -749,9 +789,29 @@ function frame(): void {
   controls.update();
 
   // Labels for every planet.
+  const distFromTarget = camera.position.distanceTo(controls.target);
+  const isWholeSystem = focusedId === null && followId === null;
   for (const [id, el] of labelEls) {
     const record = records.get(id);
     if (!record) {
+      continue;
+    }
+    // On mobile or when zoomed out a lot, hide labels to reduce clutter
+    if (isWholeSystem && window.innerWidth <= 680) {
+      el.style.display = "none";
+      continue;
+    }
+    if (isWholeSystem && distFromTarget > 60) {
+      el.style.display = "none";
+      continue;
+    }
+    // When focused on a specific planet, only show that planet's label
+    if (focusedId && focusedId !== "sun" && id !== focusedId) {
+      el.style.display = "none";
+      continue;
+    }
+    if (focusedId === "sun" && id !== "sun") {
+      el.style.display = "none";
       continue;
     }
     const v = tmp.copy(record.group.position).project(camera);
@@ -763,7 +823,7 @@ function frame(): void {
 
   // Moon labels, shown only for the focused planet's system.
   for (const moon of moonRecords) {
-    const show = params.showMoons && moon.planetId === focusedId;
+    const show = params.showMoons && moon.planetId === focusedId && window.innerWidth > 380;
     if (!show) {
       moon.label.style.display = "none";
       continue;
