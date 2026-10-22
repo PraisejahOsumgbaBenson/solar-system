@@ -413,6 +413,7 @@ function showFacts(facts: BodyFacts): void {
   const earthMasses = facts.massKg / MASS_EARTH;
   const planet = PLANETS.find((p) => p.name === facts.name);
   const yearDays = planet ? orbitalPeriodDays(planet.elements.a) : undefined;
+  const hasInterior = facts.interior && facts.interior.length > 0 && facts.name !== "Sun";
   const layers = [...facts.interior]
     .sort((a, b) => b.outer - a.outer)
     .map(
@@ -423,9 +424,13 @@ function showFacts(facts: BodyFacts): void {
 
   infoBody.innerHTML = `
     <h2>${facts.name}</h2>
-    <button id="interior-toggle" class="${interiorOn ? "on" : ""}">
+    ${
+      hasInterior
+        ? `<button id="interior-toggle" class="${interiorOn ? "on" : ""}">
       ${interiorOn ? "Hide interior" : "Look inside"}
-    </button>
+    </button>`
+        : ""
+    }
     <dl>
       ${factRow("Radius", `${facts.radiusKm.toLocaleString("en-US")} km`)}
       ${factRow("Mass", earthMasses >= 1 ? `${earthMasses.toFixed(earthMasses >= 10 ? 0 : 2)} Earths` : `${(earthMasses * 1000).toFixed(0)} thousandths of Earth`)}
@@ -451,18 +456,22 @@ function showFacts(facts: BodyFacts): void {
     <ul class="layers">${layers}</ul>
   `;
 
-  document.getElementById("interior-toggle")?.addEventListener("click", () => {
-    const turningOn = !interiorOn;
-    setInterior(turningOn);
-    if (turningOn && window.innerWidth <= 680) {
-      infoPanel.classList.add("hidden");
-      showInteriorExitButton();
-    } else {
-      hideInteriorExitButton();
-      infoPanel.classList.remove("hidden");
-    }
-    showFacts(facts);
-  });
+  if (hasInterior) {
+    document.getElementById("interior-toggle")?.addEventListener("click", () => {
+      const turningOn = !interiorOn;
+      setInterior(turningOn);
+      if (turningOn && window.innerWidth <= 680) {
+        infoPanel.classList.add("hidden");
+        showInteriorExitButton();
+      } else {
+        hideInteriorExitButton();
+        infoPanel.classList.remove("hidden");
+      }
+      showFacts(facts);
+    });
+  } else {
+    hideInteriorExitButton();
+  }
 }
 
 function focusOn(id: string | null): void {
