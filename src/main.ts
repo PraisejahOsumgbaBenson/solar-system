@@ -798,12 +798,27 @@ function frame(): void {
   controls.update();
 
   // Labels for every planet.
+  const isWholeSystem = focusedId === null && followId === null;
   const labelPositions: Array<{el: HTMLDivElement, x: number, y: number, id: string}> = [];
   
   for (const [id, el] of labelEls) {
     const record = records.get(id);
     if (!record) {
       el.style.display = "none";
+      continue;
+    }
+    // Always show labels in whole system view
+    if (isWholeSystem) {
+      const v = tmp.copy(record.group.position).project(camera);
+      const visible = v.z < 1;
+      if (!visible) {
+        el.style.display = "none";
+        continue;
+      }
+      const x = ((v.x + 1) / 2) * window.innerWidth;
+      const y = ((1 - v.y) / 2) * window.innerHeight;
+      el.style.display = "block";
+      labelPositions.push({ el, x, y, id });
       continue;
     }
     // Always show labels on mobile now, just handle positioning
