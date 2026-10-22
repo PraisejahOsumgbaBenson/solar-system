@@ -789,36 +789,51 @@ function frame(): void {
   controls.update();
 
   // Labels for every planet.
-  const distFromTarget = camera.position.distanceTo(controls.target);
-  const isWholeSystem = focusedId === null && followId === null;
+  const labelPositions: Array<{el: HTMLDivElement, x: number, y: number}> = [];
+  
   for (const [id, el] of labelEls) {
     const record = records.get(id);
     if (!record) {
-      continue;
-    }
-    // On mobile or when zoomed out a lot, hide labels to reduce clutter
-    if (isWholeSystem && window.innerWidth <= 680) {
       el.style.display = "none";
       continue;
     }
-    if (isWholeSystem && distFromTarget > 60) {
-      el.style.display = "none";
-      continue;
-    }
-    // When focused on a specific planet, only show that planet's label
-    if (focusedId && focusedId !== "sun" && id !== focusedId) {
-      el.style.display = "none";
-      continue;
-    }
-    if (focusedId === "sun" && id !== "sun") {
-      el.style.display = "none";
-      continue;
-    }
+    // Always show labels on mobile now, just handle positioning
     const v = tmp.copy(record.group.position).project(camera);
     const visible = v.z < 1;
-    el.style.display = visible ? "block" : "none";
-    el.style.left = `${((v.x + 1) / 2) * window.innerWidth}px`;
-    el.style.top = `${((1 - v.y) / 2) * window.innerHeight}px`;
+    if (!visible) {
+      el.style.display = "none";
+      continue;
+    }
+    const x = ((v.x + 1) / 2) * window.innerWidth;
+    const y = ((1 - v.y) / 2) * window.innerHeight;
+    el.style.display = "block";
+    labelPositions.push({ el, x, y });
+  }
+  
+  // Simple collision avoidance - push overlapping labels apart vertically
+  const isMobile = window.innerWidth <= 680;
+  if (labelPositions.length > 1) {
+    for (let i = 0; i < labelPositions.length; i++) {
+      for (let j = i + 1; j < labelPositions.length; j++) {
+        const a = labelPositions[i];
+        const b = labelPositions[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = isMobile ? 28 : 35;
+        if (dist < minDist && dist > 0) {
+          const push = (minDist - dist) / 2;
+          const angle = Math.atan2(dy, dx);
+          a.y += Math.sin(angle) * push;
+          b.y -= Math.sin(angle) * push;
+        }
+      }
+    }
+  }
+  
+  for (const lp of labelPositions) {
+    lp.el.style.left = `${lp.x}px`;
+    lp.el.style.top = `${lp.y}px`;
   }
 
   // Moon labels, shown only for the focused planet's system.
