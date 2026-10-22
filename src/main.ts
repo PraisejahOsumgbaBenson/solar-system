@@ -798,7 +798,6 @@ function frame(): void {
   controls.update();
 
   // Labels for every planet.
-  const isWholeSystem = focusedId === null && followId === null;
   const labelPositions: Array<{el: HTMLDivElement, x: number, y: number, id: string}> = [];
   
   for (const [id, el] of labelEls) {
@@ -807,42 +806,9 @@ function frame(): void {
       el.style.display = "none";
       continue;
     }
-    // Always show labels in whole system view
-    if (isWholeSystem) {
-      const v = tmp.copy(record.group.position).project(camera);
-      const visible = v.z < 1;
-      if (!visible) {
-        el.style.display = "none";
-        continue;
-      }
-      const x = ((v.x + 1) / 2) * window.innerWidth;
-      const y = ((1 - v.y) / 2) * window.innerHeight;
-      el.style.display = "block";
-      labelPositions.push({ el, x, y, id });
-      continue;
-    }
-    // Always show labels on mobile now, just handle positioning
     const v = tmp.copy(record.group.position).project(camera);
     const visible = v.z < 1;
     if (!visible) {
-      el.style.display = "none";
-      continue;
-    }
-    // Don't show planet label if it's behind another planet from camera view
-    const planetDist = camera.position.distanceTo(record.group.position);
-    let occluded = false;
-    for (const [otherId, otherRecord] of records) {
-      if (otherId === id) continue;
-      const otherDist = camera.position.distanceTo(otherRecord.group.position);
-      if (otherDist < planetDist - 0.5) {
-        const ov = tmp.copy(otherRecord.group.position).project(camera);
-        if (Math.abs(ov.x - v.x) < 0.12 && Math.abs(ov.y - v.y) < 0.12) {
-          occluded = true;
-          break;
-        }
-      }
-    }
-    if (occluded) {
       el.style.display = "none";
       continue;
     }
