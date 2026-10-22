@@ -789,7 +789,7 @@ function frame(): void {
   controls.update();
 
   // Labels for every planet.
-  const labelPositions: Array<{el: HTMLDivElement, x: number, y: number}> = [];
+  const labelPositions: Array<{el: HTMLDivElement, x: number, y: number, id: string}> = [];
   
   for (const [id, el] of labelEls) {
     const record = records.get(id);
@@ -804,10 +804,28 @@ function frame(): void {
       el.style.display = "none";
       continue;
     }
+    // Don't show planet label if it's behind another planet from camera view
+    const planetDist = camera.position.distanceTo(record.group.position);
+    let occluded = false;
+    for (const [otherId, otherRecord] of records) {
+      if (otherId === id) continue;
+      const otherDist = camera.position.distanceTo(otherRecord.group.position);
+      if (otherDist < planetDist - 0.5) {
+        const ov = tmp.copy(otherRecord.group.position).project(camera);
+        if (Math.abs(ov.x - v.x) < 0.12 && Math.abs(ov.y - v.y) < 0.12) {
+          occluded = true;
+          break;
+        }
+      }
+    }
+    if (occluded) {
+      el.style.display = "none";
+      continue;
+    }
     const x = ((v.x + 1) / 2) * window.innerWidth;
     const y = ((1 - v.y) / 2) * window.innerHeight;
     el.style.display = "block";
-    labelPositions.push({ el, x, y });
+    labelPositions.push({ el, x, y, id });
   }
   
   // Simple collision avoidance - push overlapping labels apart vertically
@@ -844,6 +862,18 @@ function frame(): void {
       continue;
     }
     const v = tmp.copy(moon.mesh.position).project(camera);
+    const record = records.get(moon.planetId);
+    if (!record) {
+      moon.label.style.display = "none";
+      continue;
+    }
+    // Only show if moon is in front of the planet (further away from camera relative to planet)
+    const moonDist = camera.position.distanceTo(moon.mesh.position);
+    const planetDist = camera.position.distanceTo(record.group.position);
+    if (moonDist > planetDist + 0.01) {
+      moon.label.style.display = "none";
+      continue;
+    }
     moon.label.style.display = v.z < 1 ? "block" : "none";
     moon.label.style.left = `${((v.x + 1) / 2) * window.innerWidth}px`;
     moon.label.style.top = `${((1 - v.y) / 2) * window.innerHeight}px`;
