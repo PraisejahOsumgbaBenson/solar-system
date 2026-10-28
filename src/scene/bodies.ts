@@ -114,6 +114,8 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
     surfaceMaterial,
   );
   mesh.userData.planetId = planet.id;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   axis.add(mesh);
 
   if (planet.id === "earth") {
@@ -152,6 +154,7 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
       }),
     );
     clouds.name = "clouds";
+    clouds.receiveShadow = true;
     axis.add(clouds);
   }
 
@@ -173,6 +176,7 @@ export function createPlanet(planet: Planet, sceneRadius: number): BodyRecord {
       }),
     );
     ring.rotation.x = -Math.PI / 2;
+    ring.receiveShadow = true;
     axis.add(ring);
   }
 

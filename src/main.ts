@@ -45,6 +45,8 @@ renderer.setClearColor(0x02030a, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -81,6 +83,11 @@ composer.addPass(bloom);
 // A light without distance falloff keeps every planet lit the same way, so the
 // inner planets are not blown out white while the outer ones go dark.
 const sunLight = new THREE.PointLight(0xfff4e0, 6.5, 0, 0);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 0.1;
+sunLight.shadow.camera.far = 500;
 scene.add(sunLight);
 // Fill light from every direction so the night side of a planet is still
 // readable, not pitch black.
@@ -230,6 +237,8 @@ for (const [id, record] of records) {
       new THREE.SphereGeometry(moonRadius, 24, 18),
       material,
     );
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     scene.add(mesh);
 
     const label = document.createElement("div");
