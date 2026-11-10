@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "description": "An interactive, realistic simulation of the solar system with clickable planets and 3D interior cutaways.",
+  "author": "Praisejah Osumgba-Benson",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

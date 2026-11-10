@@ -1,5 +1,8 @@
 # Solar system
 
+**[Explore the live site](https://praisejahosumgbabenson.github.io/solar-system/)** ·
+[Source on GitHub](https://github.com/PraisejahOsumgbaBenson/solar-system)
+
 An interactive, realistic simulation of the solar system. The eight planets
 orbit the Sun on their real orbital paths, spin at their real rates, and are
 tilted at their real axial tilts. Click any planet to fly to it, read a fact
@@ -83,3 +86,10 @@ J2000, and the orbital speeds of Earth (about 30 km/s), Mercury, and Neptune.
 Planetary textures: Solar System Scope, CC BY 4.0,
 https://www.solarsystemscope.com/textures/. Orbital elements and physical data
 after NASA/JPL planetary fact sheets.
+
+## License
+
+The code is released under the [MIT License](LICENSE).
+
+The textures keep their own terms: they are CC BY 4.0 from Solar System Scope
+and are not covered by the MIT license.
