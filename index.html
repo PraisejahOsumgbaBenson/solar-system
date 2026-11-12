@@ -22,11 +22,21 @@
       <h1>SOLAR SYSTEM</h1>
       <dl>
         <dt>Date</dt>
-        <dd id="hud-date">--</dd>
+        <dd>
+          <input
+            id="hud-date"
+            type="date"
+            aria-label="Simulation date"
+            title="Pick a date between 1800 and 2050"
+          />
+        </dd>
         <dt>Speed</dt>
         <dd id="hud-speed">--</dd>
       </dl>
-      <p class="hint">Click a planet to fly to it. Drag to orbit, scroll to zoom.</p>
+      <p class="hint">
+        Click a planet to fly to it. Drag to orbit, scroll to zoom. Space pauses,
+        arrows cycle.
+      </p>
     </div>
 
     <aside id="info" class="hidden">

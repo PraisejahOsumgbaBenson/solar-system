@@ -23,6 +23,15 @@ import {
   positionAt,
   velocityAt,
 } from "./physics/orbital";
+import {
+  MODEL_END_ISO,
+  MODEL_START_ISO,
+  clampDayOffset,
+  cycleFocus,
+  dayOffsetFromIso,
+  isoDateFromDayOffset,
+  parseViewState,
+} from "./state/viewState";
 import "./style.css";
 
 const DIST_SCALE = 7.5;
@@ -346,11 +355,7 @@ const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 const infoPanel = document.getElementById("info")!;
 const infoBody = document.getElementById("info-body")!;
 document.getElementById("info-close")?.addEventListener("click", () => {
-  setInterior(false);
-  focusedId = null;
-  followId = null;
-  infoPanel.classList.add("hidden");
-  hideInteriorExitButton();
+  focusOn(null);
 });
 
 // Floating button to exit interior view on mobile
@@ -491,6 +496,11 @@ function focusOn(id: string | null): void {
     focusedId = null;
     followId = null;
     infoPanel.classList.add("hidden");
+    updateUrl(true);
+    return;
+  }
+
+  if (id !== "sun" && !records.has(id)) {
     return;
   }
 
@@ -511,6 +521,7 @@ function focusOn(id: string | null): void {
     showFacts(record.planet);
   }
   infoPanel.classList.remove("hidden");
+  updateUrl(true);
 }
 
 // Snap the camera to a comfortable distance from a body, keeping the current
@@ -539,6 +550,30 @@ function viewWholeSystem(): void {
   controls.target.set(0, 0, 0);
   camera.position.set(0, 72, 92);
   controls.update();
+  updateUrl(true);
+}
+
+/**
+ * Keep the address bar shareable. While time is playing the date can drift
+ * ahead of the URL; copying a link forces a fresh write first.
+ */
+function updateUrl(force = false): void {
+  const date = isoDateFromDayOffset(dayOffset);
+  const focus = focusedId ?? "";
+  const key = `${date}|${focus}`;
+  if (!force && key === lastUrl) {
+    return;
+  }
+  lastUrl = key;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("date", date);
+  if (focusedId) {
+    url.searchParams.set("focus", focusedId);
+  } else {
+    url.searchParams.delete("focus");
+  }
+  window.history.replaceState(null, "", url);
 }
 
 // ---- Planet selector bar ----------------------------------------------------
@@ -571,10 +606,88 @@ nightButton.addEventListener("click", () => {
   applyNight();
 });
 bar.appendChild(nightButton);
+
+const copyButton = document.createElement("button");
+copyButton.textContent = "Copy link";
+copyButton.addEventListener("click", () => {
+  void copyShareLink();
+});
+bar.appendChild(copyButton);
+
 addButton("sun", "Sun");
 for (const p of PLANETS) {
   addButton(p.id, p.name);
 }
+
+async function copyShareLink(): Promise<void> {
+  updateUrl(true);
+  const link = window.location.href;
+  const copied = await writeClipboard(link);
+  copyButton.textContent = copied ? "Copied" : "Copy failed";
+  copyButton.focus();
+  window.setTimeout(() => {
+    copyButton.textContent = "Copy link";
+  }, 1500);
+}
+
+async function writeClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return copyWithExecCommand(text);
+  }
+}
+
+/** Fallback for browsers that block the async clipboard API. */
+function copyWithExecCommand(text: string): boolean {
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  }
+  field.remove();
+  return copied;
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.tagName === "BUTTON" ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    focusOn(null);
+  } else if (event.key === " " || event.code === "Space") {
+    event.preventDefault();
+    setPaused(!params.paused);
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    focusOn(cycleFocus(focusedId, 1));
+  } else if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    focusOn(cycleFocus(focusedId, -1));
+  }
+});
 
 // Clicking in the 3D view focuses a planet (ignoring drags).
 const raycaster = new THREE.Raycaster();
@@ -619,6 +732,7 @@ const params = {
 };
 
 let dayOffset = daysSinceJ2000(new Date());
+let lastUrl = "";
 
 const gui = new GUI({ title: "Time" });
 const speedController = gui
@@ -636,7 +750,17 @@ speedFolder.add({ day: () => setSpeed(1) }, "day").name("1 day / second");
 speedFolder.add({ week: () => setSpeed(7) }, "week").name("1 week / second");
 speedFolder.add({ month: () => setSpeed(30) }, "month").name("1 month / second");
 
-gui.add(params, "paused").name("pause");
+const pauseController = gui
+  .add(params, "paused")
+  .name("pause")
+  .onChange(() => updateUrl(true));
+
+function setPaused(value: boolean): void {
+  params.paused = value;
+  pauseController.updateDisplay();
+  updateUrl(true);
+}
+
 gui.add(params, "showAxis").name("rotation axis");
 gui.add(params, "night").name("night mode").onChange(applyNight);
 
@@ -650,6 +774,8 @@ gui.add(
   {
     today: () => {
       dayOffset = daysSinceJ2000(new Date());
+      syncHudDate();
+      updateUrl(true);
     },
   },
   "today",
@@ -699,13 +825,33 @@ function updateEarthNight(): void {
   shader.uniforms.uNightGain.value = params.night ? 1.7 : 1.0;
 }
 
-const hudDate = document.getElementById("hud-date");
+const hudDate = document.getElementById("hud-date") as HTMLInputElement | null;
 const hudSpeed = document.getElementById("hud-speed");
 
-function formatDate(days: number): string {
-  const j2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
-  const date = new Date(j2000 + days * 86400000);
-  return date.toISOString().slice(0, 10);
+if (hudDate) {
+  hudDate.min = MODEL_START_ISO;
+  hudDate.max = MODEL_END_ISO;
+  hudDate.addEventListener("change", () => {
+    const selected = hudDate.value ? dayOffsetFromIso(hudDate.value) : null;
+    if (selected === null) {
+      hudDate.value = isoDateFromDayOffset(dayOffset);
+      return;
+    }
+    dayOffset = clampDayOffset(selected);
+    hudDate.value = isoDateFromDayOffset(dayOffset);
+    setPaused(true);
+  });
+}
+
+/** Show the simulated date, unless the user is editing the field. */
+function syncHudDate(): void {
+  if (!hudDate || document.activeElement === hudDate) {
+    return;
+  }
+  const value = isoDateFromDayOffset(dayOffset);
+  if (hudDate.value !== value) {
+    hudDate.value = value;
+  }
 }
 
 // ---- Frame ------------------------------------------------------------------
@@ -888,13 +1034,27 @@ function frame(): void {
 
   composer.render();
 
-  if (hudDate) {
-    hudDate.textContent = formatDate(dayOffset);
-  }
+  syncHudDate();
   if (hudSpeed) {
     hudSpeed.textContent = params.paused ? "paused" : `${params.daysPerSecond} days/s`;
   }
 }
+
+// Restore a shared view and rewrite the URL with the resolved state.
+const shared = parseViewState(window.location.search);
+if (shared.date) {
+  const sharedDay = dayOffsetFromIso(shared.date);
+  if (sharedDay !== null) {
+    dayOffset = clampDayOffset(sharedDay);
+    params.paused = true;
+    pauseController.updateDisplay();
+  }
+}
+syncHudDate();
+if (shared.focus) {
+  focusOn(shared.focus);
+}
+updateUrl(true);
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
