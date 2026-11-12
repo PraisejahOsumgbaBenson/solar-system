@@ -7,6 +7,7 @@ import GUI from "lil-gui";
 import { PLANETS } from "./physics/planets";
 import type { InteriorLayer, MoonBody } from "./physics/planets";
 import {
+  createAsteroidTexture,
   createGlowTexture,
   createPlanet,
   createStarfield,
@@ -86,8 +87,10 @@ const sunLight = new THREE.PointLight(0xfff4e0, 6.5, 0, 0);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 0.1;
-sunLight.shadow.camera.far = 500;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 120;
+sunLight.shadow.bias = -0.0001;
+sunLight.shadow.normalBias = 0.02;
 scene.add(sunLight);
 // Fill light from every direction so the night side of a planet is still
 // readable, not pitch black.
@@ -278,10 +281,13 @@ const asteroidBelt = new THREE.Points(
   beltGeometry,
   new THREE.PointsMaterial({
     color: 0x9a9082,
-    size: 0.12,
+    map: createAsteroidTexture(),
+    size: 0.1,
     sizeAttenuation: true,
     transparent: true,
     opacity: 0.85,
+    alphaTest: 0.1,
+    depthWrite: false,
   }),
 );
 scene.add(asteroidBelt);
