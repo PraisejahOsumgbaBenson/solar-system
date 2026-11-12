@@ -32,7 +32,8 @@ bun run dev
 
 `fetch-textures` downloads the planetary maps once into `public/textures`
 (they are not committed). `bun run dev` opens the app at
-http://localhost:5174. `bun test` runs the orbital mechanics tests.
+http://localhost:5174. `bun test` runs the orbital mechanics and view state
+tests.
 
 ## What it does
 
@@ -59,10 +60,15 @@ http://localhost:5174. `bun test` runs the orbital mechanics tests.
   Neptune, each on its real period. A field of asteroids fills the belt between
   Mars and Jupiter. A **Moons** button and Show toggles turn any of this on or
   off, and moon names appear when you focus their planet.
-- **Time controls with real time**: speed up, pause, or jump to today. Speed
+- **Time controls and time travel**: speed up, pause, or jump to today. Speed
   presets include **real time** (one second is one second), one hour, one day,
-  one week, and one month per second. The HUD shows the simulated date. A Whole
+  one week, and one month per second. The date in the HUD is editable: pick any
+  date from 1800 to 2050 and the simulation pauses on that moment. A Whole
   system button frames all eight orbits.
+- **Shareable views**: the URL carries the date and the focused body, so a
+  copied link reopens the same moment. **Copy link** in the selector bar
+  captures the live date before copying. **Escape** closes the panel, **Space**
+  pauses, and the left and right arrows cycle through the bodies.
 
 ## Scale
 
